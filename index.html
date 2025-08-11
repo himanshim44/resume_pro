@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Resume Job Finder</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    body {
+      width: 350px;
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+      padding: 16px;
+      margin: 0;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    
+    .subtitle {
+      font-size: 0.875rem;
+      color: #6b7280;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .drop-zone {
+      width: 100%;
+      height: 100px;
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: border-color 0.3s;
+      cursor: pointer;
+      padding: 10px;
+    }
+
+    .drop-zone.dragover {
+      border-color: #3b82f6;
+      background-color: #eff6ff;
+    }
+
+    .drop-zone-text {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+    }
+    
+    input[type="file"] {
+      display: none;
+    }
+
+    .status-message {
+      display: flex;
+      align-items: center;
+      font-size: 0.875rem;
+      color: #1f2937;
+      margin-top: 1rem;
+    }
+
+    .loading-spinner {
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .file-name {
+      font-size: 0.875rem;
+      color: #374151;
+      margin-top: 0.5rem;
+      text-align: center;
+      word-break: break-all;
+    }
+    
+    .keywords-box {
+      width: 100%;
+      background-color: #f9fafb;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+      margin-top: 1.5rem;
+    }
+    
+    .keywords-box h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 0.75rem;
+    }
+    
+    .keywords-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .keyword-tag {
+      background-color: #dbeafe;
+      color: #1e40af;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .find-jobs-btn, .generate-cover-letter-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      color: white;
+      margin-top: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .find-jobs-btn {
+      background-color: #10b981;
+    }
+    
+    .find-jobs-btn:hover {
+      background-color: #059669;
+      transform: translateY(-1px);
+    }
+
+    .generate-cover-letter-btn {
+      background-color: #8b5cf6;
+    }
+
+    .generate-cover-letter-btn:hover {
+      background-color: #7c3aed;
+      transform: translateY(-1px);
+    }
+
+    .generated-text-box {
+      width: 100%;
+      background-color: #f9fafb;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+      margin-top: 1.5rem;
+    }
+
+    .generated-text-box pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 0.875rem;
+      color: #374151;
+      line-height: 1.5;
+    }
+    
+    .find-jobs-btn svg {
+      margin-left: 0.5rem;
+    }
+    
+    .error-message {
+      color: #ef4444;
+      font-size: 0.875rem;
+      text-align: center;
+      margin-top: 1rem;
+    }
+  </style>
+  <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const dropZone = document.getElementById('drop-zone');
+      const fileInput = document.getElementById('pdf-file-input');
+      const loadingMessage = document.getElementById('loading-message');
+      const fileNameDisplay = document.getElementById('file-name');
+      const keywordsContainer = document.getElementById('keywords-container');
+      const keywordsList = document.getElementById('keywords-list');
+      const findJobsBtn = document.getElementById('find-jobs-btn');
+      const generateCoverLetterBtn = document.getElementById('generate-cover-letter-btn');
+      const generatedTextBox = document.getElementById('generated-text-box');
+      const generatedTextContent = document.getElementById('generated-text-content');
+      const errorMessage = document.getElementById('error-message');
+
+      let resumeTextGlobal = ''; // Global variable to store resume text
+
+      const commonKeywords = [
+        'python', 'sql', 'javascript', 'react', 'agile', 'product management',
+        'tableau', 'powerbi', 'jira', 'figma', 'data analysis', 'web scraping',
+        'machine learning', 'deep learning', 'nlp', 'computer vision', 'data scientist',
+        'aws', 'gcp', 'azure', 'cloud computing', 'tensorflow', 'pytorch'
+      ];
+
+      function extractKeywords(text) {
+        const extracted = new Set();
+        const lowerText = text.toLowerCase();
+        commonKeywords.forEach(keyword => {
+          if (lowerText.includes(keyword)) {
+            extracted.add(keyword);
+          }
+        });
+        return Array.from(extracted);
+      }
+
+      async function handleFile(file) {
+        if (!file || file.type !== 'application/pdf') {
+          if (errorMessage) {
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = 'Please upload a valid PDF file.';
+          }
+          return;
+        }
+
+        if (loadingMessage) {
+          loadingMessage.style.display = 'flex';
+        }
+        if (errorMessage) {
+          errorMessage.style.display = 'none';
+        }
+        if (keywordsContainer) {
+          keywordsContainer.style.display = 'none';
+        }
+        if (findJobsBtn) {
+          findJobsBtn.style.display = 'none';
+        }
+        if (generateCoverLetterBtn) {
+          generateCoverLetterBtn.style.display = 'none';
+        }
+        if (generatedTextBox) {
+          generatedTextBox.style.display = 'none';
+        }
+        if (fileNameDisplay) {
+          fileNameDisplay.style.display = 'block';
+          fileNameDisplay.textContent = `File: ${file.name}`;
+        }
+        if (dropZone) {
+          dropZone.style.display = 'none';
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const arrayBuffer = e.target.result;
+          try {
+            const pdfData = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let resumeText = '';
+            for (let i = 1; i <= pdfData.numPages; i++) {
+              const page = await pdfData.getPage(i);
+              const textContent = await page.getTextContent();
+              resumeText += textContent.items.map(item => item.str).join(' ');
+            }
+            
+            resumeTextGlobal = resumeText;
+            
+            const keywords = extractKeywords(resumeText);
+            if (keywordsList) {
+              keywordsList.innerHTML = ''; // Clear previous keywords
+              keywords.forEach(kw => {
+                const span = document.createElement('span');
+                span.textContent = kw;
+                span.className = 'keyword-tag';
+                keywordsList.appendChild(span);
+              });
+            }
+            
+            if (keywords.length > 0) {
+              if (keywordsContainer) {
+                keywordsContainer.style.display = 'block';
+              }
+              if (findJobsBtn) {
+                findJobsBtn.style.display = 'flex';
+              }
+              if (generateCoverLetterBtn) {
+                generateCoverLetterBtn.style.display = 'flex';
+              }
+            }
+
+          } catch (err) {
+            console.error(err);
+            if (errorMessage) {
+              errorMessage.style.display = 'block';
+              errorMessage.textContent = 'Failed to read the PDF. Please try a different file.';
+            }
+          } finally {
+            if (loadingMessage) {
+              loadingMessage.style.display = 'none';
+            }
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      async function generateCoverLetter() {
+        if (!resumeTextGlobal) {
+          if (errorMessage) {
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = 'Please upload a resume first.';
+          }
+          return;
+        }
+
+        if (generatedTextBox) {
+          generatedTextBox.style.display = 'block';
+        }
+        if (generatedTextContent) {
+          generatedTextContent.textContent = 'Generating a cover letter draft...';
+        }
+        if (generateCoverLetterBtn) {
+          generateCoverLetterBtn.disabled = true;
+        }
+        if (loadingMessage) {
+          loadingMessage.style.display = 'flex';
+        }
+
+        const prompt = `Draft a professional and concise cover letter based on the following resume text. Focus on highlighting the candidate's key skills, projects, and experiences that would be relevant for a data scientist or product manager role. Keep the tone formal and enthusiastic. \n\nResume text:\n${resumeTextGlobal}`;
+
+        let chatHistory = [];
+        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+        const payload = { contents: chatHistory };
+        const apiKey = "" 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await response.json();
+          if (result.candidates && result.candidates.length > 0 &&
+              result.candidates[0].content && result.candidates[0].content.parts &&
+              result.candidates[0].content.parts.length > 0) {
+            const text = result.candidates[0].content.parts[0].text;
+            if (generatedTextContent) {
+              generatedTextContent.textContent = text;
+            }
+          } else {
+            if (errorMessage) {
+              errorMessage.style.display = 'block';
+              errorMessage.textContent = 'Failed to generate cover letter. Please try again.';
+            }
+          }
+        } catch (error) {
+          console.error('API call failed:', error);
+          if (errorMessage) {
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = 'Network error or API call failed. Please check your connection.';
+          }
+        } finally {
+          if (loadingMessage) {
+            loadingMessage.style.display = 'none';
+          }
+          if (generateCoverLetterBtn) {
+            generateCoverLetterBtn.disabled = false;
+          }
+        }
+      }
+
+      // Drag and drop event handlers
+      if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+          dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('dragover');
+          const file = e.dataTransfer.files[0];
+          handleFile(file);
+        });
+
+        // Click event handler for file input
+        dropZone.addEventListener('click', () => {
+          if (fileInput) {
+            fileInput.click();
+          }
+        });
+      }
+
+      if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          handleFile(file);
+        });
+      }
+      
+      if (findJobsBtn) {
+        findJobsBtn.addEventListener('click', () => {
+          const keywords = Array.from(keywordsList.querySelectorAll('.keyword-tag')).map(tag => tag.textContent);
+          if (keywords.length > 0) {
+            const jobQuery = keywords.join('%20');
+            const searchUrl = `https://www.linkedin.com/jobs/search?keywords=${jobQuery}&location=United%20States`;
+            chrome.tabs.create({ url: searchUrl });
+          }
+        });
+      }
+
+      if (generateCoverLetterBtn) {
+        generateCoverLetterBtn.addEventListener('click', generateCoverLetter);
+      }
+    });
+  </script>
+</body>
+</html>
